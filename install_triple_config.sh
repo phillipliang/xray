@@ -462,7 +462,11 @@ cat > /usr/local/etc/xray/tcp_tls_config.json<<-EOF
                             "certificateFile": "/usr/local/etc/xray/cert/fullchain.cer", 
                             "keyFile": "/usr/local/etc/xray/cert/private.key"
                         }
-                    ]
+                    ],
+                    "minVersion": "1.2",
+                    "maxVersion": "1.2",
+                    "preferServerCipherSuites": true,
+                    "cipherSuites":"TLS_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
                 }
             }
         }
