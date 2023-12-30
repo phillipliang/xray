@@ -67,18 +67,52 @@ check_release(){
             firewall-cmd --zone=public --add-port=443/tcp --permanent
             firewall-cmd --reload
         fi
-        while [ ! -f "nginx-release-centos-7-0.el7.ngx.noarch.rpm" ]
-        do
-            wget http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
-            if [ ! -f "nginx-release-centos-7-0.el7.ngx.noarch.rpm" ]; then
-                red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
-            fi
-        done
-        rpm -ivh nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps
-        #logcmd "rpm -Uvh http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps"
-        #loggreen "Prepare to install nginx."
+
+        # install nginx on centos 7
+        if  [ "$VERSION" == "7" ] ;then
+            while [ ! -f "nginx-release-centos-7-0.el7.ngx.noarch.rpm" ]
+            do
+                wget http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+                if [ ! -f "nginx-release-centos-7-0.el7.ngx.noarch.rpm" ]; then
+                    red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
+                fi
+            done
+            rpm -ivh nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps
+            #logcmd "rpm -Uvh http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps"
+            #loggreen "Prepare to install nginx."
+        fi
+
+        # install nginx on centos 8
+        if  [ "$VERSION" == "8" ] ;then
+            while [ ! -f "nginx-1.24.0-1.el8.ngx.x86_64.rpm" ]
+            do
+                wget https://nginx.org/packages/centos/8/x86_64/RPMS/nginx-1.24.0-1.el8.ngx.x86_64.rpm
+                if [ ! -f "nginx-1.24.0-1.el8.ngx.x86_64.rpm" ]; then
+                    red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
+                fi
+            done
+            rpm -ivh nginx-1.24.0-1.el8.ngx.x86_64.rpm
+            #logcmd "rpm -Uvh https://nginx.org/packages/centos/8/x86_64/RPMS/nginx-1.24.0-1.el8.ngx.x86_64.rpm"
+            #loggreen "Prepare to install nginx."
+        fi
+
+        # install nginx on centos 9
+        if  [ "$VERSION" == "9" ] ;then
+            while [ ! -f "nginx-1.24.0-1.el9.ngx.x86_64.rpm" ]
+            do
+                wget http://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm
+                if [ ! -f "nginx-1.24.0-1.el9.ngx.x86_64.rpm" ]; then
+                    red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
+                fi
+            done
+            rpm -ivh nginx-1.24.0-1.el9.ngx.x86_64.rpm
+            #logcmd "rpm -Uvh http://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm"
+            #loggreen "Prepare to install nginx."
+        fi
+
         #yum install -y libtool perl-core zlib-devel gcc pcre* >/dev/null 2>&1
         yum install -y epel-release
+
     elif [ "$RELEASE" == "ubuntu" ]; then
         systemPackage="apt-get"
         if  [ "$VERSION" == "14" ] ;then
@@ -205,35 +239,35 @@ cat > /etc/nginx/atrandys/tcp_default.conf<<-EOF
     root /usr/share/nginx/html;
     index index.php index.html index.htm;
 }
-    
-server { 
+
+server {
     listen       0.0.0.0:80;
     server_name  $your_domain;
     root /usr/share/nginx/html/;
     index index.php index.html;
-    #rewrite ^(.*)$  https://\$host\$1 permanent; 
+    #rewrite ^(.*)$  https://\$host\$1 permanent;
 }
 EOF
 
 newpath=$(cat /dev/urandom | head -1 | md5sum | head -c 4)
 cat > /etc/nginx/atrandys/ws_default.conf<<-EOF
-server { 
+server {
     listen       80;
     server_name  $your_domain;
     root /usr/share/nginx/html;
     index index.php index.html;
-    #rewrite ^(.*)$  https://\$host\$1 permanent; 
+    #rewrite ^(.*)$  https://\$host\$1 permanent;
 }
 server {
     listen 443 ssl http2;
     server_name $your_domain;
     root /usr/share/nginx/html;
     index index.php index.html;
-    ssl_certificate /usr/local/etc/xray/cert/fullchain.cer; 
+    ssl_certificate /usr/local/etc/xray/cert/fullchain.cer;
     ssl_certificate_key /usr/local/etc/xray/cert/private.key;
     location /$newpath {
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:11234; 
+        proxy_pass http://127.0.0.1:11234;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -249,12 +283,12 @@ fi
 
 if [ "$config_type" == "ws_tls" ]; then
 cat > /etc/nginx/conf.d/default.conf<<-EOF
-server { 
+server {
     listen       80;
     server_name  $your_domain;
     root /usr/share/nginx/html;
     index index.php index.html;
-    #rewrite ^(.*)$  https://\$host\$1 permanent; 
+    #rewrite ^(.*)$  https://\$host\$1 permanent;
 }
 EOF
     systemctl restart nginx.service
@@ -264,8 +298,15 @@ fi
     systemctl enable nginx.service
     green "$(date +"%Y-%m-%d %H:%M:%S") - 使用acme.sh申请https证书."
     curl https://get.acme.sh | sh
-    ~/.acme.sh/acme.sh  --issue  -d $your_domain  --webroot /usr/share/nginx/html/
-    if test -s /root/.acme.sh/$your_domain/fullchain.cer; then
+    # acme tool now support ECC certificates, link: https://github.com/acmesh-official/acme.sh?tab=readme-ov-file#10-issue-ecc-certificates
+    # zerossl has issue and it's better to switch to LetsEncrypt.
+    # References:
+    #     https://github.com/acmesh-official/acme.sh/issues/4927
+    #     https://community.letsencrypt.org/t/acme-sh-with-http-01-authentication-failing/210600
+    #     https://github.com/acmesh-official/acme.sh/wiki/Change-default-CA-to-ZeroSSL
+    #     https://github.com/acmesh-official/acme.sh/wiki/Server
+    ~/.acme.sh/acme.sh  --issue  -d $your_domain --server letsencrypt --webroot /usr/share/nginx/html/ -k ec-256
+    if test -s /root/.acme.sh/${your_domain}_ecc/fullchain.cer; then
         green "$(date +"%Y-%m-%d %H:%M:%S") - 申请https证书成功."
     else
         cert_failed="1"
@@ -284,7 +325,7 @@ change_2_ws_nginx(){
     #systemctl restart nginx
 }
 
-install_xray(){ 
+install_xray(){
     green "$(date +"%Y-%m-%d %H:%M:%S") ==== 安装xray"
     mkdir /usr/local/etc/xray/
     mkdir /usr/local/etc/xray/cert
@@ -300,13 +341,13 @@ install_xray(){
     config_tcp_xtls
     config_tcp_tls
     config_ws_tls
-    if [ "$config_type" == "tcp_xtls" ]; then      
+    if [ "$config_type" == "tcp_xtls" ]; then
         change_2_tcp_xtls
     fi
-    if [ "$config_type" == "tcp_tls" ]; then   
+    if [ "$config_type" == "tcp_tls" ]; then
         change_2_tcp_tls
     fi
-    if [ "$config_type" == "ws_tls" ]; then  
+    if [ "$config_type" == "ws_tls" ]; then
         change_2_ws_tls
         change_2_ws_nginx
     fi
@@ -322,7 +363,7 @@ install_xray(){
     if [ "$cert_failed" == "1" ]; then
         green "======nginx信息======"
         red "申请证书失败，请尝试手动申请证书."
-    fi    
+    fi
     #green "==xray客户端配置文件存放路径=="
     #green "/usr/local/etc/xray/client.json"
     echo
@@ -333,7 +374,7 @@ install_xray(){
     echo
     green "本次安装检测信息如下，如nginx与xray正常启动，表示安装正常："
     ps -aux | grep -e nginx -e xray
-    
+
 }
 
 config_tcp_xtls(){
@@ -341,57 +382,97 @@ cat > /usr/local/etc/xray/tcp_xtls_config.json<<-EOF
 {
     "log": {
         "loglevel": "warning"
-    }, 
+    },
     "inbounds": [
         {
-            "listen": "0.0.0.0", 
-            "port": 443, 
-            "protocol": "vless", 
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
             "settings": {
                 "clients": [
                     {
-                        "id": "$v2uuid", 
-                        "level": 0, 
+                        "id": "$v2uuid",
+                        "level": 0,
                         "email": "a@b.com",
                         "flow":"xtls-rprx-direct"
                     }
-                ], 
-                "decryption": "none", 
+                ],
+                "decryption": "none",
                 "fallbacks": [
                     {
                         "dest": 37212
-                    }, 
+                    },
                     {
-                        "alpn": "h2", 
+                        "alpn": "h2",
                         "dest": 37213
                     }
                 ]
-            }, 
+            },
             "streamSettings": {
-                "network": "tcp", 
-                "security": "xtls", 
+                "network": "tcp",
+                "security": "xtls",
                 "xtlsSettings": {
-                    "serverName": "$your_domain", 
+                    "serverName": "$your_domain",
                     "alpn": [
-                        "h2", 
+                        "h2",
                         "http/1.1"
-                    ], 
+                    ],
                     "certificates": [
                         {
-                            "certificateFile": "/usr/local/etc/xray/cert/fullchain.cer", 
+                            "certificateFile": "/usr/local/etc/xray/cert/fullchain.cer",
                             "keyFile": "/usr/local/etc/xray/cert/private.key"
                         }
-                    ]
+                    ],
+                    "minVersion": "1.2",
+                    "maxVersion": "1.2",
+                    "preferServerCipherSuites": true,
+                    "cipherSuites":"TLS_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
                 }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": ["http", "tls"]
             }
         }
-    ], 
+    ],
     "outbounds": [
         {
-            "protocol": "freedom", 
+            "tag": "direct",
+            "protocol": "freedom",
             "settings": { }
+        },
+        {
+            "tag":"cloudflare-warp",
+            "protocol": "socks",
+            "settings": {
+                "servers": [
+                   {
+                       "address": "127.0.0.1",
+                       "port": 40000
+                    }
+                ]
+            }
         }
-    ]
+    ],
+    "routing": {
+        "domainStrategy": "AsIs",
+        "rules": [
+            {
+                "type": "field",
+                "domain": [
+                    "domain:cloudflare.com",
+                    "geosite:cloudflare"
+                ],
+                "outboundTag": "cloudflare-warp"
+            },
+            {
+              "type": "field",
+              "network": "tcp,udp",
+              "outboundTag": "direct"
+            }
+        ],
+        "domainMatcher": "hybrid"
+    }
 }
 EOF
 
@@ -409,7 +490,7 @@ id：${v2uuid}
 跳过证书验证：false
 }
 EOF
-    
+
 }
 change_2_tcp_xtls(){
     echo "tcp_xtls" > /usr/local/etc/xray/atrandys_config
@@ -423,43 +504,43 @@ cat > /usr/local/etc/xray/tcp_tls_config.json<<-EOF
 {
     "log": {
         "loglevel": "warning"
-    }, 
+    },
     "inbounds": [
         {
-            "listen": "0.0.0.0", 
-            "port": 443, 
-            "protocol": "vless", 
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
             "settings": {
                 "clients": [
                     {
-                        "id": "$v2uuid", 
-                        "level": 0, 
+                        "id": "$v2uuid",
+                        "level": 0,
                         "email": "a@b.com"
                     }
-                ], 
-                "decryption": "none", 
+                ],
+                "decryption": "none",
                 "fallbacks": [
                     {
                         "dest": 37212
-                    }, 
+                    },
                     {
-                        "alpn": "h2", 
+                        "alpn": "h2",
                         "dest": 37213
                     }
                 ]
-            }, 
+            },
             "streamSettings": {
-                "network": "tcp", 
-                "security": "tls", 
+                "network": "tcp",
+                "security": "tls",
                 "tlsSettings": {
-                    "serverName": "$your_domain", 
+                    "serverName": "$your_domain",
                     "alpn": [
-                        "h2", 
+                        "h2",
                         "http/1.1"
-                    ], 
+                    ],
                     "certificates": [
                         {
-                            "certificateFile": "/usr/local/etc/xray/cert/fullchain.cer", 
+                            "certificateFile": "/usr/local/etc/xray/cert/fullchain.cer",
                             "keyFile": "/usr/local/etc/xray/cert/private.key"
                         }
                     ],
@@ -468,15 +549,51 @@ cat > /usr/local/etc/xray/tcp_tls_config.json<<-EOF
                     "preferServerCipherSuites": true,
                     "cipherSuites":"TLS_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
                 }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": ["http", "tls"]
             }
         }
-    ], 
+    ],
     "outbounds": [
         {
-            "protocol": "freedom", 
+            "tag": "direct",
+            "protocol": "freedom",
             "settings": { }
+        },
+        {
+            "tag":"cloudflare-warp",
+            "protocol": "socks",
+            "settings": {
+                "servers": [
+                   {
+                       "address": "127.0.0.1",
+                       "port": 40000
+                    }
+                ]
+            }
         }
-    ]
+    ],
+    "routing": {
+        "domainStrategy": "AsIs",
+        "rules": [
+            {
+                "type": "field",
+                "domain": [
+                    "domain:cloudflare.com",
+                    "geosite:cloudflare"
+                ],
+                "outboundTag": "cloudflare-warp"
+            },
+            {
+              "type": "field",
+              "network": "tcp,udp",
+              "outboundTag": "direct"
+            }
+        ],
+        "domainMatcher": "hybrid"
+    }
 }
 EOF
 
@@ -589,7 +706,7 @@ remove_xray(){
     rm -rf /usr/share/nginx/html/*
     rm -rf /root/.acme.sh/
     green "nginx & xray has been deleted."
-    
+
 }
 
 function start_menu(){
@@ -681,10 +798,10 @@ function start_menu(){
             clear
             start_menu
         fi
-        
+
     ;;
     6)
-    remove_xray 
+    remove_xray
     ;;
     7)
     get_myconfig
