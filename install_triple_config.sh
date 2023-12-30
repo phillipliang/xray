@@ -72,13 +72,13 @@ check_release(){
         if  [ "$VERSION" == "7" ] ;then
             while [ ! -f "nginx-release-centos-7-0.el7.ngx.noarch.rpm" ]
             do
-                wget http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+                wget https://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
                 if [ ! -f "nginx-release-centos-7-0.el7.ngx.noarch.rpm" ]; then
                     red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
                 fi
             done
             rpm -ivh nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps
-            #logcmd "rpm -Uvh http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps"
+            #logcmd "rpm -Uvh https://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm --force --nodeps"
             #loggreen "Prepare to install nginx."
         fi
 
@@ -100,13 +100,13 @@ check_release(){
         if  [ "$VERSION" == "9" ] ;then
             while [ ! -f "nginx-1.24.0-1.el9.ngx.x86_64.rpm" ]
             do
-                wget http://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm
+                wget https://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm
                 if [ ! -f "nginx-1.24.0-1.el9.ngx.x86_64.rpm" ]; then
                     red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
                 fi
             done
             rpm -ivh nginx-1.24.0-1.el9.ngx.x86_64.rpm
-            #logcmd "rpm -Uvh http://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm"
+            #logcmd "rpm -Uvh https://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm"
             #loggreen "Prepare to install nginx."
         fi
 
@@ -335,7 +335,7 @@ install_xray(){
     v2uuid=$(cat /proc/sys/kernel/random/uuid)
     if [ -d "/usr/share/nginx/html/" ]; then
         cd /usr/share/nginx/html/ && rm -f ./*
-        wget https://github.com/atrandys/trojan/raw/master/fakesite.zip
+        wget https://github.com/phillipliang/trojan/raw/master/fakesite.zip
         unzip -o fakesite.zip
     fi
     config_tcp_xtls
@@ -493,7 +493,7 @@ EOF
 
 }
 change_2_tcp_xtls(){
-    echo "tcp_xtls" > /usr/local/etc/xray/atrandys_config
+    echo "tcp_xtls" > /usr/local/etc/xray/xray_config_type
     \cp /usr/local/etc/xray/tcp_xtls_config.json /usr/local/etc/xray/config.json
     #systemctl restart xray
 
@@ -613,7 +613,7 @@ id：${v2uuid}
 EOF
 }
 change_2_tcp_tls(){
-    echo "tcp_tls" > /usr/local/etc/xray/atrandys_config
+    echo "tcp_tls" > /usr/local/etc/xray/xray_config_type
     \cp /usr/local/etc/xray/tcp_tls_config.json /usr/local/etc/xray/config.json
     #systemctl restart xray
 }
@@ -666,13 +666,13 @@ uuid：${v2uuid}
 EOF
 }
 change_2_ws_tls(){
-    echo "ws_tls" > /usr/local/etc/xray/atrandys_config
+    echo "ws_tls" > /usr/local/etc/xray/xray_config_type
     \cp /usr/local/etc/xray/ws_tls_config.json /usr/local/etc/xray/config.json
     #systemctl restart xray
 }
 
 get_myconfig(){
-    check_config_type=$(cat /usr/local/etc/xray/atrandys_config)
+    check_config_type=$(cat /usr/local/etc/xray/xray_config_type)
     green "当前配置：$check_config_type"
     if [ "$check_config_type" == "tcp_xtls" ]; then
         cat /usr/local/etc/xray/myconfig_tcp_xtls.json
@@ -750,9 +750,9 @@ function start_menu(){
     systemctl restart xray
     ;;
     5)
-        if [ -f "/usr/local/etc/xray/atrandys_config" ]; then
+        if [ -f "/usr/local/etc/xray/xray_config_type" ]; then
             green "========================================================="
-            green "当前配置：$(cat /usr/local/etc/xray/atrandys_config)"
+            green "当前配置：$(cat /usr/local/etc/xray/xray_config_type)"
             red "注意！切换配置会使自定义修改的config.json内容丢失，请知晓"
             green "========================================================="
             echo
