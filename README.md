@@ -29,3 +29,4 @@ bash <(curl -Ls https://raw.githubusercontent.com/atrandys/xray/main/install_wp.
   - [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118)
 
 
+# xray-config-file
