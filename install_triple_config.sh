@@ -98,15 +98,15 @@ check_release(){
 
         # install nginx on centos 9
         if  [ "$VERSION" == "9" ] ;then
-            while [ ! -f "nginx-1.24.0-1.el9.ngx.x86_64.rpm" ]
+            while [ ! -f "nginx-1.26.2-1.el9.ngx.x86_64.rpm" ] nginx-1.26.2-1.el9.ngx.x86_64.rpm
             do
-                wget https://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm
-                if [ ! -f "nginx-1.24.0-1.el9.ngx.x86_64.rpm" ]; then
+                wget https://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.26.2-1.el9.ngx.x86_64.rpm
+                if [ ! -f "nginx-1.26.2-1.el9.ngx.x86_64.rpm" ]; then
                     red "$(date +"%Y-%m-%d %H:%M:%S") - 下载nginx rpm包失败，继续重试..."
                 fi
             done
-            rpm -ivh nginx-1.24.0-1.el9.ngx.x86_64.rpm
-            #logcmd "rpm -Uvh https://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.24.0-1.el9.ngx.x86_64.rpm"
+            rpm -ivh nginx-1.26.2-1.el9.ngx.x86_64.rpm
+            #logcmd "rpm -Uvh https://nginx.org/packages/centos/9/x86_64/RPMS/nginx-1.26.2-1.el9.ngx.x86_64.rpm"
             #loggreen "Prepare to install nginx."
         fi
 
