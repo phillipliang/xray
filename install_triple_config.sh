@@ -370,6 +370,12 @@ install_xray(){
         change_2_ws_tls
         change_2_ws_nginx
     fi
+
+    # download latest geosite.dat and geoip.dat files
+    cd /usr/local/share/xray  && rm -f ./*
+    wget https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+    wget https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
+
     systemctl enable xray.service
     sed -i "s/User=nobody/User=root/;" /etc/systemd/system/xray.service
     systemctl daemon-reload
@@ -609,8 +615,17 @@ cat > /usr/local/etc/xray/tcp_tls_config.json<<-EOF
             {
                 "type": "field",
                 "domain": [
-                    "domain:cloudflare.com",
-                    "geosite:cloudflare"
+                    "domain:api.openai.com"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:cloudflare",
+                    "geosite:openai",
+                    "geosite:anthropic",
+                    "domain:seagm.com"
                 ],
                 "outboundTag": "cloudflare-warp"
             },
