@@ -20,6 +20,7 @@ logcmd(){
 source /etc/os-release
 RELEASE=$ID
 VERSION=$VERSION_ID
+XRAY_PORT=8080
 cat >> /usr/src/atrandys.log <<-EOF
 == Script: atrandys/xray/install.sh
 == Time  : $(date +"%Y-%m-%d %H:%M:%S")
@@ -47,13 +48,14 @@ check_release(){
                 green "$(date +"%Y-%m-%d %H:%M:%S") - SELinux状态非disabled,关闭SELinux."
                 setenforce 0
                 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
-                #loggreen "SELinux is not disabled, add port 80/443 to SELinux rules."
-                #loggreen "==== Install semanage"
-                #logcmd "yum install -y policycoreutils-python"
-                #semanage port -a -t http_port_t -p tcp 80
-                #semanage port -a -t http_port_t -p tcp 443
-                #semanage port -a -t http_port_t -p tcp 37212
-                #semanage port -a -t http_port_t -p tcp 37213
+                # loggreen "SELinux is not disabled, add port 80/443/8080 to SELinux rules."
+                # loggreen "==== Install semanage"
+                # logcmd "yum install -y policycoreutils-python"
+                # semanage port -a -t http_port_t -p tcp 80
+                # semanage port -a -t http_port_t -p tcp 443
+                # semanage port -a -t http_port_t -p tcp 8080
+                # semanage port -a -t http_port_t -p tcp 37212
+                # semanage port -a -t http_port_t -p tcp 37213
             elif [ "$CHECK" == "SELINUX=permissive" ]; then
                 green "$(date +"%Y-%m-%d %H:%M:%S") - SELinux状态非disabled,关闭SELinux."
                 setenforce 0
@@ -62,9 +64,10 @@ check_release(){
         fi
         firewall_status=`firewall-cmd --state`
         if [ "$firewall_status" == "running" ]; then
-            green "$(date +"%Y-%m-%d %H:%M:%S") - FireWalld状态非disabled,添加80/443到FireWalld rules."
+            green "$(date +"%Y-%m-%d %H:%M:%S") - FireWalld状态非disabled,添加 80 / 443 / ${XRAY_PORT} 到FireWalld rules."
             firewall-cmd --zone=public --add-port=80/tcp --permanent
             firewall-cmd --zone=public --add-port=443/tcp --permanent
+            firewall-cmd --zone=public --add-port=${XRAY_PORT}/tcp --permanent
             firewall-cmd --reload
         fi
 
@@ -127,6 +130,7 @@ check_release(){
         if [ -n "$ufw_status" ]; then
             ufw allow 80/tcp
             ufw allow 443/tcp
+            ufw allow ${XRAY_PORT}/tcp
             ufw reload
         fi
         apt-get update >/dev/null 2>&1
@@ -136,6 +140,7 @@ check_release(){
         if [ -n "$ufw_status" ]; then
             ufw allow 80/tcp
             ufw allow 443/tcp
+            ufw allow ${XRAY_PORT}/tcp
             ufw reload
         fi
         apt-get update >/dev/null 2>&1
@@ -150,6 +155,7 @@ check_port(){
     $systemPackage -y install net-tools
     Port80=`netstat -tlpn | awk -F '[: ]+' '$1=="tcp"{print $5}' | grep -w 80`
     Port443=`netstat -tlpn | awk -F '[: ]+' '$1=="tcp"{print $5}' | grep -w 443`
+    PortToBeUsedByXray=`netstat -tlpn | awk -F '[: ]+' '$1=="tcp"{print $5}' | grep -w ${XRAY_PORT}`
     if [ -n "$Port80" ]; then
         process80=`netstat -tlpn | awk -F '[: ]+' '$5=="80"{print $9}'`
         red "$(date +"%Y-%m-%d %H:%M:%S") - 80端口被占用,占用进程:${process80}\n== Install failed."
@@ -158,6 +164,11 @@ check_port(){
     if [ -n "$Port443" ]; then
         process443=`netstat -tlpn | awk -F '[: ]+' '$5=="443"{print $9}'`
         red "$(date +"%Y-%m-%d %H:%M:%S") - 443端口被占用,占用进程:${process443}.\n== Install failed."
+        exit 1
+    fi
+    if [ -n "$PortToBeUsedByXray" ]; then
+        processIdUsingXrayPort=`netstat -tlpn | awk -F '[: ]+' '$5=="${XRAY_PORT}"{print $9}'`
+        red "$(date +"%Y-%m-%d %H:%M:%S") - ${XRAY_PORT}端口被占用,占用进程:${processIdUsingXrayPort}.\n== Install failed."
         exit 1
     fi
 }
@@ -259,7 +270,7 @@ server {
     #rewrite ^(.*)$  https://\$host\$1 permanent;
 }
 server {
-    listen 443 ssl http2;
+    listen ${XRAY_PORT} ssl http2;
     server_name $your_domain;
     root /usr/share/nginx/html;
     index index.php index.html;
@@ -297,7 +308,7 @@ fi
     #nginx -t
     systemctl enable nginx.service
     green "$(date +"%Y-%m-%d %H:%M:%S") - 使用acme.sh申请https证书."
-    yum install -y tar
+    $systemPackage install -y tar
     curl https://get.acme.sh | sh
     # acme tool now support ECC certificates, link: https://github.com/acmesh-official/acme.sh?tab=readme-ov-file#10-issue-ecc-certificates
     # zerossl has issue and it's better to switch to LetsEncrypt.
@@ -394,7 +405,7 @@ cat > /usr/local/etc/xray/tcp_xtls_config.json<<-EOF
     "inbounds": [
         {
             "listen": "0.0.0.0",
-            "port": 443,
+            "port": ${XRAY_PORT},
             "protocol": "vless",
             "settings": {
                 "clients": [
@@ -468,8 +479,17 @@ cat > /usr/local/etc/xray/tcp_xtls_config.json<<-EOF
             {
                 "type": "field",
                 "domain": [
-                    "domain:cloudflare.com",
-                    "geosite:cloudflare"
+                    "domain:api.openai.com"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:cloudflare",
+                    "geosite:openai",
+                    "geosite:anthropic",
+                    "domain:seagm.com"
                 ],
                 "outboundTag": "cloudflare-warp"
             },
@@ -487,7 +507,7 @@ EOF
 cat > /usr/local/etc/xray/myconfig_tcp_xtls.json<<-EOF
 {
 地址：${your_domain}
-端口：443
+端口：${XRAY_PORT}
 id：${v2uuid}
 加密：none
 流控：xtls-rprx-direct
@@ -516,7 +536,7 @@ cat > /usr/local/etc/xray/tcp_tls_config.json<<-EOF
     "inbounds": [
         {
             "listen": "0.0.0.0",
-            "port": 443,
+            "port": $XRAY_PORT,
             "protocol": "vless",
             "settings": {
                 "clients": [
@@ -609,7 +629,7 @@ cat > /usr/local/etc/xray/myconfig_tcp_tls.json<<-EOF
 {
 ===========配置参数=============
 地址：${your_domain}
-端口：443
+端口：${XRAY_PORT}
 id：${v2uuid}
 加密：none
 别名：自定义
@@ -664,7 +684,7 @@ cat > /usr/local/etc/xray/myconfig_ws_tls.json<<-EOF
 {
 ===========配置参数=============
 地址：${your_domain}
-端口：443
+端口：${XRAY_PORT}
 uuid：${v2uuid}
 传输协议：ws
 别名：myws
