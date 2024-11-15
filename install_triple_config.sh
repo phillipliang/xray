@@ -297,6 +297,7 @@ fi
     #nginx -t
     systemctl enable nginx.service
     green "$(date +"%Y-%m-%d %H:%M:%S") - 使用acme.sh申请https证书."
+    yum install -y tar
     curl https://get.acme.sh | sh
     # acme tool now support ECC certificates, link: https://github.com/acmesh-official/acme.sh?tab=readme-ov-file#10-issue-ecc-certificates
     # zerossl has issue and it's better to switch to LetsEncrypt.
@@ -305,7 +306,14 @@ fi
     #     https://community.letsencrypt.org/t/acme-sh-with-http-01-authentication-failing/210600
     #     https://github.com/acmesh-official/acme.sh/wiki/Change-default-CA-to-ZeroSSL
     #     https://github.com/acmesh-official/acme.sh/wiki/Server
-    ~/.acme.sh/acme.sh  --issue  -d $your_domain --server letsencrypt --webroot /usr/share/nginx/html/ -k ec-256
+
+
+    # switch CA to Let's Encrypt
+    /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+
+    # issue certificate
+    /root/.acme.sh/acme.sh --issue -d $your_domain -k ec-256 --webroot /usr/share/nginx/html/
+
     if test -s /root/.acme.sh/${your_domain}_ecc/fullchain.cer; then
         green "$(date +"%Y-%m-%d %H:%M:%S") - 申请https证书成功."
     else
@@ -354,9 +362,9 @@ install_xray(){
     systemctl enable xray.service
     sed -i "s/User=nobody/User=root/;" /etc/systemd/system/xray.service
     systemctl daemon-reload
-    ~/.acme.sh/acme.sh  --installcert  -d  $your_domain   \
-        --key-file   /usr/local/etc/xray/cert/private.key \
-        --fullchain-file  /usr/local/etc/xray/cert/fullchain.cer \
+    /root/.acme.sh/acme.sh --installcert -d $your_domain --ecc \
+        --key-file       /usr/local/etc/xray/cert/private.key \
+        --fullchain-file /usr/local/etc/xray/cert/fullchain.cer \
         --reloadcmd  "chmod -R 777 /usr/local/etc/xray/cert && systemctl restart xray.service"
     systemctl restart nginx
     green "== 安装完成."
